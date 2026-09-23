@@ -35,6 +35,7 @@
 - [Architecture](#architecture)
 - [Adaptive Frame Codec (opt-in, ASCII modes 2-6)](#adaptive-frame-codec-opt-in-ascii-modes-2-6)
 - [Zero-Dependency Static Web Player](#zero-dependency-static-web-player)
+- [JavaScript SDK (asciline-player)](#javascript-sdk-asciline-player)
 - [Installation](#installation)
 - [Running with Docker](#running-with-docker)
 - [Customization](#customization)
@@ -197,6 +198,165 @@ python -m http.server
 ```
 
 > **Infinite Playback & Low RAM:** The static player uses an aggressive rolling buffer (~3 seconds). Rendered frames are instantly garbage-collected, allowing continuous playback with no duration limit and a near-zero memory footprint.
+
+## JavaScript SDK (`asciline-player`)
+
+The official JavaScript SDK ships as the `asciline-player` npm package (MIT license). It provides two complementary APIs: a full-featured `AsciiPlayer` class for programmatic control, and a zero-config `<ascf-player>` HTML element for drop-in embedding — both backed by the same high-performance render engine.
+
+### Install
+
+```bash
+npm install asciline-player
+```
+
+Or use the CDN directly (no install):
+
+```html
+<script type="module" src="https://cdn.jsdelivr.net/npm/asciline-player/src/asciline-player.js"></script>
+```
+
+---
+
+### 1. JS API — Live WebSocket Stream
+
+Connect to a running `stream_server.py` backend and render in real time:
+
+```html
+<div id="player-box" style="position:relative; width:100%; aspect-ratio:16/9; background:#000;">
+  <canvas id="ascii-canvas"></canvas>
+</div>
+
+<script type="module">
+  import { AsciiPlayer } from 'asciline-player';
+
+  const player = new AsciiPlayer('#ascii-canvas', {
+    url: 'ws://localhost:8000/ws', // live WebSocket stream
+    container: '#player-box',
+    audio: true,           // synchronized audio
+    selectionLayer: true,  // copyable text overlay
+    playOverlay: true,     // auto ▶ button
+  });
+</script>
+```
+
+---
+
+### 2. JS API — Static ASCF File (no backend required)
+
+Play a pre-compiled `.ascf` file directly from any static host (GitHub Pages, Vercel, Netlify…):
+
+```html
+<div id="player-box" style="position:relative; width:100%; aspect-ratio:16/9; background:#000;">
+  <canvas id="ascii-canvas"></canvas>
+</div>
+
+<script type="module">
+  import { AsciiPlayer } from 'asciline-player';
+
+  const player = new AsciiPlayer('#ascii-canvas', {
+    src:      'demo.ascf',  // .ascf file URL — no WebSocket server needed
+    audioSrc: 'demo.mp3',   // optional paired audio
+    container: '#player-box',
+    loop:      true,
+    playOverlay: true,
+  });
+
+  // Or imperatively:
+  // player.play('demo.ascf', 'demo.mp3');
+</script>
+```
+
+> Both modes share identical playback controls: `play()`, `pause()`, `resume()`, `togglePlay()`, `mute()`, `unmute()`, `setVolume()`, `setFilters()`, `destroy()`.
+
+---
+
+### 3. HTML Tag — `<ascf-player>`
+
+Embed a clip with a single HTML tag. No JavaScript needed:
+
+```html
+<!-- Load the element once (CDN or local) -->
+<script type="module" src="https://cdn.jsdelivr.net/npm/asciline-player/src/ascf-element.js"></script>
+
+<!-- Then use it anywhere on the page -->
+<ascf-player
+  src="demo.ascf"
+  audio="demo.mp3"
+  loop
+  style="width:100%; aspect-ratio:16/9;">
+</ascf-player>
+```
+
+For live streaming, use the `ws` attribute instead of `src`:
+
+```html
+<ascf-player ws="ws://localhost:8000/ws" style="width:100%; aspect-ratio:16/9;"></ascf-player>
+```
+
+**Supported attributes:**
+
+| Attribute | Description |
+| :-- | :-- |
+| `src` | URL of the `.ascf` file |
+| `audio` | URL of the paired `.mp3` audio file (optional) |
+| `ws` | WebSocket URL for live streaming (alternative to `src`) |
+| `autoplay` | Start playback immediately (boolean) |
+| `loop` | Restart on finish — only with `src` (boolean) |
+| `muted` | Start with audio muted (boolean) |
+
+DOM events are dispatched with the `ascf-` prefix (e.g. `ascf-playing`, `ascf-ended`, `ascf-timeupdate`).
+
+---
+
+### Constructor Options Reference
+
+| Option | Default | Description |
+| :-- | :-- | :-- |
+| `url` | `null` | WebSocket URL for live streaming |
+| `src` | `null` | Static `.ascf` file URL (no backend needed) |
+| `audioSrc` | `null` | Static audio URL paired with `src` |
+| `loop` | `false` | Loop ASCF playback on completion |
+| `audio` | `true` | Enable audio (boolean / selector / HTMLAudioElement) |
+| `container` | parent | Sizing container element or CSS selector |
+| `autoplay` | `false` | Begin playback immediately |
+| `muted` | `false` | Start playback with audio muted |
+| `playOverlay` | `true` | Auto-create the ▶ overlay button |
+| `muteButton` | `true` | Auto-create the mute/unmute toggle |
+| `clickToPlayPause` | `true` | Click canvas to toggle play/pause |
+| `keyboardShortcuts` | `true` | Spacebar toggles play/pause |
+| `selectionLayer` | `null` | Enable copyable text overlay |
+| `bufferSize` | `4` | Jitter buffer depth (frames) |
+| `filters` | `{}` | Initial filter values (contrast, gamma, brightness…) |
+
+---
+
+### Programmatic API
+
+```js
+player.play('clip.ascf', 'clip.mp3'); // static file
+player.play();                         // live WS (uses options.url)
+player.pause();
+player.resume();
+player.togglePlay();
+player.mute();
+player.unmute();
+player.setVolume(0.8);        // 0–1
+player.setFilters({ contrast: 1.2, invert: true });
+player.setRenderMode(4);      // switch color depth live (WS only)
+player.seek(30);              // jump to 30s (WS only)
+player.getMasterClock();      // current position in seconds
+player.getState();            // 'IDLE' | 'CONNECTING' | 'PLAYING' | 'PAUSED' | 'ENDED' | 'ERROR'
+player.destroy();             // clean up all resources
+
+// Event listener API
+player.on('init',        ({ fps, cols, rows, duration }) => { ... });
+player.on('timeupdate',  (seconds) => { ... });
+player.on('fps',         ({ fps, targetFps, buffered }) => { ... });
+player.on('statechange', (state) => { ... });
+player.on('ended',       () => { ... });
+player.on('error',       (err) => { ... });
+player.off('timeupdate', handler); // remove listener
+```
 
 ## Installation
 
