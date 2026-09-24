@@ -493,7 +493,12 @@ async def audio_stream(v: int | None = None, start: float = 0.0):
     return StreamingResponse(
         audio_generator(),
         media_type="audio/mpeg",
-        headers={"Accept-Ranges": "bytes"}
+        headers={
+            "Accept-Ranges": "bytes",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, OPTIONS",
+            "Access-Control-Allow-Headers": "*"
+        }
     )
 
 

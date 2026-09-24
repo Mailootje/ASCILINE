@@ -255,6 +255,7 @@ export class AsciiPlayer {
             renderMode: 1,              // 1: Text, 2: 64 Color, 3: 512 Color, etc.
             pixelMode: false,           // Raw pixel mode
             autoplay: false,
+            muted: false,               // Start with audio muted
             playOverlay: true,          // Auto-create a ▶ play button overlay (set false to manage manually)
             muteButton: true,           // Auto-create a mute/unmute toggle when audio is enabled
             clickToPlayPause: true,     // Click video to toggle Play / Pause
@@ -320,9 +321,13 @@ export class AsciiPlayer {
             this.audioEl = this.options.audio;
         } else if (this.options.audio === true) {
             this.audioEl = document.createElement('audio');
+            this.audioEl.crossOrigin = 'anonymous';
             this.audioEl.preload = 'none';
         } else {
             this.audioEl = null;
+        }
+        if (this.audioEl && this.options.muted) {
+            this.audioEl.muted = true;
         }
 
         // Internal State
@@ -637,11 +642,17 @@ export class AsciiPlayer {
                 ? (this.pauseStartTime - this.streamStartTime) / 1000.0
                 : (performance.now() - this.streamStartTime) / 1000.0;
             if (currentSec > 0.5) {
-                this.audioOffset = currentSec;
-                this.audioEl.src = this._getAudioUrl(
-                    `v=${this.currentQueueIdx}&start=${currentSec.toFixed(2)}&t=${Date.now()}`
-                );
-                this.audioEl.load();
+                if (this._ascfAudio) {
+                    // Static ASCF mode: simply sync the audio element currentTime
+                    try { this.audioEl.currentTime = currentSec; } catch (_) {}
+                } else {
+                    // Live WebSocket mode: fetch fresh range from server
+                    this.audioOffset = currentSec;
+                    this.audioEl.src = this._getAudioUrl(
+                        `v=${this.currentQueueIdx}&start=${currentSec.toFixed(2)}&t=${Date.now()}`
+                    );
+                    this.audioEl.load();
+                }
             }
         }
         this._audioGated = false;
