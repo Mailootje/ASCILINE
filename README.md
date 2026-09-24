@@ -266,7 +266,7 @@ Play a pre-compiled `.ascf` file directly from any static host (GitHub Pages, Ve
 </script>
 ```
 
-> Both modes share identical playback controls: `play()`, `pause()`, `resume()`, `togglePlay()`, `mute()`, `unmute()`, `setVolume()`, `setFilters()`, `destroy()`.
+> Both modes share identical playback controls: `play()`, `pause()`, `resume()`, `togglePlay()`, `mute()`, `unmute()`, `setVolume()`, `setFilters()`, `destroy()` (filters and seek: WS only).
 
 ---
 
@@ -324,7 +324,7 @@ DOM events are dispatched with the `ascf-` prefix (e.g. `ascf-playing`, `ascf-en
 | `muteButton` | `true` | Auto-create the mute/unmute toggle |
 | `clickToPlayPause` | `true` | Click canvas to toggle play/pause |
 | `keyboardShortcuts` | `true` | Spacebar toggles play/pause |
-| `selectionLayer` | `null` | Enable copyable text overlay |
+| `selectionLayer` | `false` | Enable copyable text overlay |
 | `bufferSize` | `4` | Jitter buffer depth (frames) |
 | `filters` | `{}` | Initial filter values (contrast, gamma, brightness…) |
 
